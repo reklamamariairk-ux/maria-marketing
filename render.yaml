@@ -1,0 +1,23 @@
+# Конфиг Render для maria-marketing. Использует ту же БД что
+# sales-plan-dashboard — в Render Dashboard выставить DATABASE_URL руками
+# (берётся из maria-dashboard сервиса).
+
+services:
+  - type: web
+    name: maria-marketing
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false  # ставится вручную из Render UI
+      - key: GROQ_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_OWNER_CHAT_ID
+        sync: false

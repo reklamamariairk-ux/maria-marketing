@@ -1,0 +1,22 @@
+{
+  "name": "maria-marketing",
+  "version": "0.1.0",
+  "description": "Marketing automation для кондитерской «Мария» — кампании, ROI, LTV, AI-аналитика",
+  "main": "api/server.js",
+  "private": true,
+  "scripts": {
+    "start": "node api/server.js",
+    "dev": "node --watch api/server.js",
+    "migrate": "node api/lib/migrate.js",
+    "test": "node --test api/__tests__"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "pg": "^8.13.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {}
+}

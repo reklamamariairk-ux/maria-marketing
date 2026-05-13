@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maria Marketing</title>
+  <style>
+    :root {
+      --brand: #dc1e3c;
+      --bg: #fafafa;
+      --card: #fff;
+      --text: #1a1a1a;
+      --hint: #888;
+      --border: #e5e5e5;
+      --green: #1e8a4a;
+      --red: #e53935;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    header { background: var(--brand); color: #fff; padding: 20px 24px; }
+    h1 { margin: 0; font-size: 22px; }
+    .subtitle { opacity: 0.85; font-size: 13px; margin-top: 4px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    h2 { font-size: 18px; margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: #f5f5f5; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--hint); }
+    .btn { background: var(--brand); color: #fff; border: 0; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn:hover { opacity: 0.9; }
+    .btn-ghost { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; }
+    label { display: block; font-size: 12px; color: var(--hint); margin-bottom: 4px; }
+    input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
+    .roi-positive { color: var(--green); font-weight: 700; }
+    .roi-negative { color: var(--red); font-weight: 700; }
+    .status-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .status-active { background: #e6f7ee; color: var(--green); }
+    .status-planned { background: #fff4e5; color: #c77700; }
+    .status-completed { background: #f0f0f0; color: var(--hint); }
+    .empty { text-align: center; padding: 40px; color: var(--hint); }
+  </style>
+</head>
+<body>
+<header>
+  <div class="container" style="padding-top:0;padding-bottom:0">
+    <h1>📊 Maria Marketing</h1>
+    <div class="subtitle">Управление маркетинговыми кампаниями · ROI / LTV / Аналитика</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>Новая кампания</h2>
+    <div class="form-row">
+      <div>
+        <label>Название</label>
+        <input id="c-name" placeholder="Лето 2026 — Авито">
+      </div>
+      <div>
+        <label>Канал</label>
+        <select id="c-channel"></select>
+      </div>
+      <div>
+        <label>Промокод</label>
+        <input id="c-promo" placeholder="LETO26">
+      </div>
+      <div>
+        <label>Начало</label>
+        <input id="c-start" type="date">
+      </div>
+      <div>
+        <label>Конец</label>
+        <input id="c-end" type="date">
+      </div>
+      <div>
+        <label>Бюджет (₽)</label>
+        <input id="c-budget" type="number" min="0" placeholder="25000">
+      </div>
+      <div>
+        <label>Цель</label>
+        <select id="c-goal">
+          <option value="sales">Продажи</option>
+          <option value="leads">Лиды</option>
+          <option value="reach">Охват</option>
+          <option value="traffic">Трафик</option>
+        </select>
+      </div>
+      <div>
+        <label>Партнёр (для блогеров/радио)</label>
+        <input id="c-partner" placeholder="Блогер Маша Иванова">
+      </div>
+    </div>
+    <button class="btn" onclick="createCampaign()">Создать кампанию</button>
+    <span id="create-status" style="margin-left:12px;font-size:13px;color:var(--hint)"></span>
+  </div>
+
+  <div class="card">
+    <h2>Кампании</h2>
+    <div style="overflow-x:auto">
+      <table id="campaigns-table">
+        <thead>
+          <tr>
+            <th>Название</th>
+            <th>Канал</th>
+            <th>Промокод</th>
+            <th>Период</th>
+            <th>Бюджет</th>
+            <th>Потрачено</th>
+            <th>Выручка</th>
+            <th>Заказы</th>
+            <th>ROI</th>
+            <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody id="campaigns-tbody">
+          <tr><td colspan="10" class="empty">Загрузка...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const fmt = (n) => new Intl.NumberFormat('ru-RU').format(Math.round(n));
+const statusLabels = {
+  planned: 'Запланир.', active: 'Активна', paused: 'Пауза',
+  completed: 'Завершена', archived: 'Архив',
+};
+
+async function loadChannels() {
+  const sel = document.getElementById('c-channel');
+  try {
+    const res = await fetch('/api/channels');
+    const channels = await res.json();
+    sel.innerHTML = channels.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  } catch (e) { sel.innerHTML = '<option>Ошибка загрузки</option>'; }
+}
+
+async function loadCampaigns() {
+  try {
+    const res = await fetch('/api/campaigns');
+    const list = await res.json();
+    const tbody = document.getElementById('campaigns-tbody');
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">Пока нет кампаний. Создай первую сверху.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(c => {
+      const roi = c.roi_percent;
+      const roiCls = roi === null ? '' : (roi >= 0 ? 'roi-positive' : 'roi-negative');
+      const roiText = roi === null ? '—' : `${roi > 0 ? '+' : ''}${roi}%`;
+      const period = `${(c.start_date || '').slice(0,10)} → ${(c.end_date || '').slice(0,10) || '—'}`;
+      return `<tr>
+        <td><strong>${c.name}</strong>${c.partner_name ? `<br><small style="color:var(--hint)">${c.partner_name}</small>` : ''}</td>
+        <td>${c.channel_name}</td>
+        <td><code>${c.promo_code || '—'}</code></td>
+        <td style="font-size:11px;color:var(--hint)">${period}</td>
+        <td>${fmt(c.budget_planned)} ₽</td>
+        <td>${fmt(c.spent_actual)} ₽</td>
+        <td>${fmt(c.revenue_total)} ₽</td>
+        <td>${c.orders_count}</td>
+        <td class="${roiCls}">${roiText}</td>
+        <td><span class="status-badge status-${c.status}">${statusLabels[c.status] || c.status}</span></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('campaigns-tbody').innerHTML =
+      `<tr><td colspan="10" class="empty">Ошибка: ${e.message}</td></tr>`;
+  }
+}
+
+async function createCampaign() {
+  const body = {
+    name: document.getElementById('c-name').value.trim(),
+    channel_id: parseInt(document.getElementById('c-channel').value),
+    promo_code: document.getElementById('c-promo').value.trim() || null,
+    start_date: document.getElementById('c-start').value,
+    end_date: document.getElementById('c-end').value || null,
+    budget_planned: parseFloat(document.getElementById('c-budget').value) || 0,
+    goal: document.getElementById('c-goal').value,
+    partner_name: document.getElementById('c-partner').value.trim() || null,
+    status: 'active',
+  };
+  if (!body.name || !body.channel_id || !body.start_date) {
+    setStatus('Заполни название, канал и дату начала', 'red');
+    return;
+  }
+  setStatus('Создаём...', 'gray');
+  try {
+    const res = await fetch('/api/campaigns', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Ошибка');
+    setStatus('✓ Создано', 'green');
+    document.getElementById('c-name').value = '';
+    document.getElementById('c-promo').value = '';
+    document.getElementById('c-budget').value = '';
+    loadCampaigns();
+  } catch (e) {
+    setStatus('✗ ' + e.message, 'red');
+  }
+}
+
+function setStatus(text, color) {
+  const el = document.getElementById('create-status');
+  el.textContent = text;
+  el.style.color = color === 'red' ? 'var(--red)' : color === 'green' ? 'var(--green)' : 'var(--hint)';
+}
+
+loadChannels();
+loadCampaigns();
+setInterval(loadCampaigns, 30000);
+</script>
+</body>
+</html>
