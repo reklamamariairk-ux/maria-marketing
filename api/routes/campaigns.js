@@ -8,12 +8,13 @@ const VALID_STATUSES = new Set(['planned', 'active', 'paused', 'completed', 'arc
 // ── GET /api/campaigns?status=&channel=&from=&to= ─────────────────────────
 async function list(req, res) {
   try {
-    const { status, channel, from, to } = req.query;
+    const { status, channel, channel_id, from, to } = req.query;
     const params = [];
     const wheres = [];
 
     if (status) { params.push(status); wheres.push(`c.status = $${params.length}`); }
-    if (channel) { params.push(channel); wheres.push(`ch.code = $${params.length}`); }
+    if (channel_id) { params.push(parseInt(channel_id, 10)); wheres.push(`c.channel_id = $${params.length}`); }
+    else if (channel) { params.push(channel); wheres.push(`ch.code = $${params.length}`); }
     if (from) { params.push(from); wheres.push(`(c.end_date IS NULL OR c.end_date >= $${params.length})`); }
     if (to)   { params.push(to);   wheres.push(`c.start_date <= $${params.length}`); }
 

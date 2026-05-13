@@ -14,40 +14,75 @@
       --border: #e5e5e5;
       --green: #1e8a4a;
       --red: #e53935;
+      --orange: #c77700;
+      --blue: #1976d2;
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
-    .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px; }
     header { background: var(--brand); color: #fff; padding: 20px 24px; }
     h1 { margin: 0; font-size: 22px; }
     .subtitle { opacity: 0.85; font-size: 13px; margin-top: 4px; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
     h2 { font-size: 18px; margin: 0 0 12px; }
+    h3 { font-size: 15px; margin: 14px 0 8px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); }
     th { background: #f5f5f5; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--hint); }
-    .btn { background: var(--brand); color: #fff; border: 0; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    tr:hover td { background: #fafafa; }
+    .btn { background: var(--brand); color: #fff; border: 0; padding: 9px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-ghost { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn-danger { background: var(--red); }
+    .btn-blue { background: var(--blue); }
+    .btn-icon { background: transparent; border: 0; cursor: pointer; padding: 4px 6px; font-size: 16px; }
+    .btn-icon:hover { background: #f0f0f0; border-radius: 4px; }
     .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px; }
     label { display: block; font-size: 12px; color: var(--hint); margin-bottom: 4px; }
     input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; }
     .roi-positive { color: var(--green); font-weight: 700; }
     .roi-negative { color: var(--red); font-weight: 700; }
+    .roi-neutral { color: var(--orange); font-weight: 700; }
     .status-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
     .status-active { background: #e6f7ee; color: var(--green); }
-    .status-planned { background: #fff4e5; color: #c77700; }
-    .status-completed { background: #f0f0f0; color: var(--hint); }
+    .status-planned { background: #fff4e5; color: var(--orange); }
+    .status-paused { background: #f0f0f0; color: var(--hint); }
+    .status-completed { background: #e3eaf3; color: var(--blue); }
+    .status-archived { background: #f0f0f0; color: var(--hint); }
     .empty { text-align: center; padding: 40px; color: var(--hint); }
     .hidden { display: none !important; }
     code { background: #f3f3f3; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+
+    /* Modal */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+    .modal { background: #fff; border-radius: 12px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative; }
+    .modal-close { position: absolute; top: 12px; right: 12px; background: transparent; border: 0; font-size: 22px; cursor: pointer; color: var(--hint); }
+
+    /* AI Report */
+    .report { background: linear-gradient(135deg, #fff 0%, #fafafa 100%); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-top: 12px; }
+    .report-summary { background: #fff8e1; border-left: 4px solid var(--orange); padding: 12px 14px; border-radius: 4px; font-weight: 500; margin-bottom: 16px; }
+    .insight-block { margin-bottom: 14px; }
+    .insight-item { padding: 8px 10px; border-left: 3px solid var(--border); margin-bottom: 6px; background: #fafafa; border-radius: 0 6px 6px 0; }
+    .insight-item.high { border-color: var(--red); background: #ffeaea; }
+    .insight-item.medium { border-color: var(--orange); background: #fff4e5; }
+    .insight-item.low { border-color: var(--green); background: #e6f7ee; }
+
+    .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .filter-bar select, .filter-bar input { width: auto; min-width: 140px; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .kpi { text-align: center; }
+    .kpi-value { font-size: 24px; font-weight: 800; }
+    .kpi-label { font-size: 11px; color: var(--hint); }
   </style>
 </head>
 <body>
 <header>
   <div class="container" style="padding-top:0;padding-bottom:0">
     <h1>📊 Maria Marketing</h1>
-    <div class="subtitle">Управление маркетинговыми кампаниями · ROI / LTV / Аналитика</div>
+    <div class="subtitle">Управление маркетинговыми кампаниями · ROI / LTV / AI-аналитика</div>
   </div>
 </header>
 
@@ -60,29 +95,17 @@
       <button class="btn-ghost btn" onclick="document.getElementById('csv-block').classList.toggle('hidden')">Импорт CSV</button>
     </div>
 
-    <div id="sales-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:10px">
-      <div style="text-align:center">
-        <div style="font-size:24px;font-weight:800" id="stat-orders">—</div>
-        <div style="font-size:11px;color:var(--hint)">Заказов всего</div>
-      </div>
-      <div style="text-align:center">
-        <div style="font-size:24px;font-weight:800" id="stat-revenue">—</div>
-        <div style="font-size:11px;color:var(--hint)">Выручка ₽</div>
-      </div>
-      <div style="text-align:center">
-        <div style="font-size:24px;font-weight:800" id="stat-promo">—</div>
-        <div style="font-size:11px;color:var(--hint)">С промокодом</div>
-      </div>
-      <div style="text-align:center">
-        <div style="font-size:24px;font-weight:800" id="stat-customers">—</div>
-        <div style="font-size:11px;color:var(--hint)">Уникальных клиентов</div>
-      </div>
+    <div id="sales-stats" class="kpi-grid">
+      <div class="kpi"><div class="kpi-value" id="stat-orders">—</div><div class="kpi-label">Заказов всего</div></div>
+      <div class="kpi"><div class="kpi-value" id="stat-revenue">—</div><div class="kpi-label">Выручка ₽</div></div>
+      <div class="kpi"><div class="kpi-value" id="stat-promo">—</div><div class="kpi-label">С промокодом</div></div>
+      <div class="kpi"><div class="kpi-value" id="stat-customers">—</div><div class="kpi-label">Уникальных клиентов</div></div>
     </div>
 
     <div id="csv-block" class="hidden" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
       <p style="font-size:13px;color:var(--hint);line-height:1.5;margin:0 0 12px">
         Выгрузка из 1С в CSV (UTF-8, разделитель <code>;</code> или <code>,</code>).<br>
-        <strong>Обязательные колонки:</strong> <code>date</code>/<code>дата</code> и <code>amount</code>/<code>сумма</code><br>
+        <strong>Обязательные:</strong> <code>date</code>/<code>дата</code> и <code>amount</code>/<code>сумма</code><br>
         <strong>Желательно:</strong> <code>phone</code>/<code>телефон</code>, <code>promo_code</code>/<code>промокод</code>, <code>store_id</code>, <code>product_id</code>, <code>cost</code>, <code>quantity</code>
       </p>
       <input type="file" id="csv-file" accept=".csv,text/csv" style="margin-bottom:8px">
@@ -92,15 +115,34 @@
     </div>
   </div>
 
+  <!-- AI Analyst -->
   <div class="card">
-    <h2>Новая кампания</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <h2 style="margin:0">🧠 AI-аналитик</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="analyze-period" type="month" style="width:auto" value="">
+        <button class="btn btn-blue" onclick="runAnalysis()" id="analyze-btn">Сгенерировать отчёт</button>
+      </div>
+    </div>
+    <div id="analyze-status" style="font-size:13px;color:var(--hint);margin-bottom:8px"></div>
+    <div id="report-container"></div>
+    <div style="margin-top:14px;font-size:12px;color:var(--hint)">
+      <a href="#" onclick="loadReports();return false">↻ История отчётов</a>
+      <span id="reports-history"></span>
+    </div>
+  </div>
+
+  <!-- Создание кампании -->
+  <div class="card">
+    <h2 id="form-title">➕ Новая кампания</h2>
+    <input type="hidden" id="c-id" value="">
     <div class="form-row">
       <div>
-        <label>Название</label>
+        <label>Название*</label>
         <input id="c-name" placeholder="Лето 2026 — Авито">
       </div>
       <div>
-        <label>Канал</label>
+        <label>Канал*</label>
         <select id="c-channel"></select>
       </div>
       <div>
@@ -108,7 +150,7 @@
         <input id="c-promo" placeholder="LETO26">
       </div>
       <div>
-        <label>Начало</label>
+        <label>Начало*</label>
         <input id="c-start" type="date">
       </div>
       <div>
@@ -129,16 +171,43 @@
         </select>
       </div>
       <div>
-        <label>Партнёр (для блогеров/радио)</label>
-        <input id="c-partner" placeholder="Блогер Маша Иванова">
+        <label>Статус</label>
+        <select id="c-status">
+          <option value="active">Активна</option>
+          <option value="planned">Запланир.</option>
+          <option value="paused">Пауза</option>
+          <option value="completed">Завершена</option>
+          <option value="archived">Архив</option>
+        </select>
+      </div>
+      <div>
+        <label>Партнёр (блогер/радио)</label>
+        <input id="c-partner" placeholder="Маша Иванова">
       </div>
     </div>
-    <button class="btn" onclick="createCampaign()">Создать кампанию</button>
+    <button class="btn" onclick="saveCampaign()" id="save-btn">Создать</button>
+    <button class="btn btn-ghost" onclick="resetForm()" id="cancel-btn" style="display:none;margin-left:8px">Отменить</button>
     <span id="create-status" style="margin-left:12px;font-size:13px;color:var(--hint)"></span>
   </div>
 
+  <!-- Кампании со списком и фильтрами -->
   <div class="card">
-    <h2>Кампании</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <h2 style="margin:0">📋 Кампании</h2>
+      <div class="filter-bar">
+        <select id="filter-channel" onchange="loadCampaigns()">
+          <option value="">Все каналы</option>
+        </select>
+        <select id="filter-status" onchange="loadCampaigns()">
+          <option value="">Все статусы</option>
+          <option value="active">Активные</option>
+          <option value="planned">Запланир.</option>
+          <option value="paused">Пауза</option>
+          <option value="completed">Завершены</option>
+          <option value="archived">Архив</option>
+        </select>
+      </div>
+    </div>
     <div style="overflow-x:auto">
       <table id="campaigns-table">
         <thead>
@@ -153,10 +222,11 @@
             <th>Заказы</th>
             <th>ROI</th>
             <th>Статус</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="campaigns-tbody">
-          <tr><td colspan="10" class="empty">Загрузка...</td></tr>
+          <tr><td colspan="11" class="empty">Загрузка...</td></tr>
         </tbody>
       </table>
     </div>
@@ -164,87 +234,204 @@
 
 </div>
 
+<!-- Модалка деталей кампании -->
+<div id="detail-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <button class="modal-close" onclick="closeDetail()">×</button>
+    <h2 id="detail-title">Детали кампании</h2>
+    <div id="detail-kpis" class="kpi-grid" style="margin-bottom:16px"></div>
+
+    <h3>💰 Дневные расходы</h3>
+    <p style="font-size:12px;color:var(--hint);margin:0 0 10px">
+      Для оффлайн-каналов вводи руками. Онлайн позже подтянем через API.
+    </p>
+    <div style="display:grid;grid-template-columns:140px 120px 100px 100px 100px auto;gap:8px;align-items:end;margin-bottom:12px">
+      <div><label>Дата</label><input type="date" id="d-date"></div>
+      <div><label>Стоимость (₽)</label><input type="number" id="d-cost" min="0" step="0.01"></div>
+      <div><label>Показы</label><input type="number" id="d-impressions" min="0"></div>
+      <div><label>Клики</label><input type="number" id="d-clicks" min="0"></div>
+      <div><label>Конверсии</label><input type="number" id="d-conversions" min="0"></div>
+      <button class="btn btn-sm" onclick="addDaily()">Добавить</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Дата</th><th>Стоимость</th><th>Показы</th><th>Клики</th><th>Конв.</th><th>Источник</th><th></th></tr>
+      </thead>
+      <tbody id="daily-tbody"><tr><td colspan="7" class="empty">Нет данных</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
 <script>
-const fmt = (n) => new Intl.NumberFormat('ru-RU').format(Math.round(n));
+const fmt = (n) => new Intl.NumberFormat('ru-RU').format(Math.round(n || 0));
+const fmtMoney = (n) => fmt(n) + ' ₽';
 const statusLabels = {
   planned: 'Запланир.', active: 'Активна', paused: 'Пауза',
   completed: 'Завершена', archived: 'Архив',
 };
+let allChannels = [];
+let currentDetailCampaign = null;
+
+function roiClass(roi) {
+  if (roi === null || roi === undefined) return '';
+  if (roi >= 100) return 'roi-positive';
+  if (roi >= 30) return 'roi-neutral';
+  return 'roi-negative';
+}
+function roiText(roi) {
+  if (roi === null || roi === undefined) return '—';
+  return `${roi > 0 ? '+' : ''}${roi}%`;
+}
 
 async function loadChannels() {
-  const sel = document.getElementById('c-channel');
   try {
     const res = await fetch('/api/channels');
-    const channels = await res.json();
-    sel.innerHTML = channels.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-  } catch (e) { sel.innerHTML = '<option>Ошибка загрузки</option>'; }
+    allChannels = await res.json();
+    const cSel = document.getElementById('c-channel');
+    const fSel = document.getElementById('filter-channel');
+    cSel.innerHTML = allChannels.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    fSel.innerHTML = '<option value="">Все каналы</option>' +
+      allChannels.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  } catch (e) {
+    document.getElementById('c-channel').innerHTML = '<option>Ошибка</option>';
+  }
 }
 
 async function loadCampaigns() {
+  const channel = document.getElementById('filter-channel').value;
+  const status = document.getElementById('filter-status').value;
+  const qs = new URLSearchParams();
+  if (channel) qs.set('channel_id', channel);
+  if (status) qs.set('status', status);
+
   try {
-    const res = await fetch('/api/campaigns');
+    const res = await fetch('/api/campaigns?' + qs.toString());
     const list = await res.json();
     const tbody = document.getElementById('campaigns-tbody');
-    if (list.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" class="empty">Пока нет кампаний. Создай первую сверху.</td></tr>';
+    if (!Array.isArray(list) || list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="11" class="empty">Нет кампаний по фильтру. Создай новую сверху.</td></tr>';
       return;
     }
     tbody.innerHTML = list.map(c => {
       const roi = c.roi_percent;
-      const roiCls = roi === null ? '' : (roi >= 0 ? 'roi-positive' : 'roi-negative');
-      const roiText = roi === null ? '—' : `${roi > 0 ? '+' : ''}${roi}%`;
       const period = `${(c.start_date || '').slice(0,10)} → ${(c.end_date || '').slice(0,10) || '—'}`;
       return `<tr>
-        <td><strong>${c.name}</strong>${c.partner_name ? `<br><small style="color:var(--hint)">${c.partner_name}</small>` : ''}</td>
+        <td><strong style="cursor:pointer;color:var(--blue)" onclick="openDetail(${c.id})">${c.name}</strong>${c.partner_name ? `<br><small style="color:var(--hint)">${c.partner_name}</small>` : ''}</td>
         <td>${c.channel_name}</td>
         <td><code>${c.promo_code || '—'}</code></td>
         <td style="font-size:11px;color:var(--hint)">${period}</td>
-        <td>${fmt(c.budget_planned)} ₽</td>
-        <td>${fmt(c.spent_actual)} ₽</td>
-        <td>${fmt(c.revenue_total)} ₽</td>
+        <td>${fmtMoney(c.budget_planned)}</td>
+        <td>${fmtMoney(c.spent_actual)}</td>
+        <td>${fmtMoney(c.revenue_total)}</td>
         <td>${c.orders_count}</td>
-        <td class="${roiCls}">${roiText}</td>
+        <td class="${roiClass(roi)}">${roiText(roi)}</td>
         <td><span class="status-badge status-${c.status}">${statusLabels[c.status] || c.status}</span></td>
+        <td style="white-space:nowrap">
+          <button class="btn-icon" onclick="openDetail(${c.id})" title="Детали">📊</button>
+          <button class="btn-icon" onclick="editCampaign(${c.id})" title="Редактировать">✏️</button>
+          <button class="btn-icon" onclick="deleteCampaign(${c.id}, '${c.name.replace(/'/g, "\\'")}')" title="Удалить">🗑</button>
+        </td>
       </tr>`;
     }).join('');
   } catch (e) {
     document.getElementById('campaigns-tbody').innerHTML =
-      `<tr><td colspan="10" class="empty">Ошибка: ${e.message}</td></tr>`;
+      `<tr><td colspan="11" class="empty">Ошибка: ${e.message}</td></tr>`;
   }
 }
 
-async function createCampaign() {
-  const body = {
+function getFormBody() {
+  return {
     name: document.getElementById('c-name').value.trim(),
     channel_id: parseInt(document.getElementById('c-channel').value),
-    promo_code: document.getElementById('c-promo').value.trim() || null,
+    promo_code: document.getElementById('c-promo').value.trim().toUpperCase() || null,
     start_date: document.getElementById('c-start').value,
     end_date: document.getElementById('c-end').value || null,
     budget_planned: parseFloat(document.getElementById('c-budget').value) || 0,
     goal: document.getElementById('c-goal').value,
+    status: document.getElementById('c-status').value,
     partner_name: document.getElementById('c-partner').value.trim() || null,
-    status: 'active',
   };
+}
+
+async function saveCampaign() {
+  const id = document.getElementById('c-id').value;
+  const body = getFormBody();
   if (!body.name || !body.channel_id || !body.start_date) {
     setStatus('Заполни название, канал и дату начала', 'red');
     return;
   }
-  setStatus('Создаём...', 'gray');
+  setStatus(id ? 'Сохраняем...' : 'Создаём...', 'gray');
   try {
-    const res = await fetch('/api/campaigns', {
-      method: 'POST',
+    const url = id ? `/api/campaigns/${id}` : '/api/campaigns';
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Ошибка');
-    setStatus('✓ Создано', 'green');
-    document.getElementById('c-name').value = '';
-    document.getElementById('c-promo').value = '';
-    document.getElementById('c-budget').value = '';
+    setStatus(id ? '✓ Сохранено' : '✓ Создано', 'green');
+    resetForm();
     loadCampaigns();
   } catch (e) {
     setStatus('✗ ' + e.message, 'red');
+  }
+}
+
+async function editCampaign(id) {
+  try {
+    const res = await fetch('/api/campaigns/' + id + '/metrics');
+    const m = await res.json();
+    const c = m.campaign;
+    if (!c) return;
+
+    document.getElementById('c-id').value = c.id;
+    document.getElementById('c-name').value = c.name || '';
+    document.getElementById('c-channel').value = c.channel_id;
+    document.getElementById('c-promo').value = c.promo_code || '';
+    document.getElementById('c-start').value = (c.start_date || '').slice(0,10);
+    document.getElementById('c-end').value = (c.end_date || '').slice(0,10);
+    document.getElementById('c-budget').value = c.budget_planned || '';
+    document.getElementById('c-goal').value = c.goal || 'sales';
+    document.getElementById('c-status').value = c.status || 'active';
+    document.getElementById('c-partner').value = c.partner_name || '';
+
+    document.getElementById('form-title').textContent = '✏️ Редактирование: ' + c.name;
+    document.getElementById('save-btn').textContent = 'Сохранить';
+    document.getElementById('cancel-btn').style.display = 'inline-block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) {
+    setStatus('✗ ' + e.message, 'red');
+  }
+}
+
+function resetForm() {
+  document.getElementById('c-id').value = '';
+  document.getElementById('c-name').value = '';
+  document.getElementById('c-promo').value = '';
+  document.getElementById('c-start').value = '';
+  document.getElementById('c-end').value = '';
+  document.getElementById('c-budget').value = '';
+  document.getElementById('c-partner').value = '';
+  document.getElementById('c-goal').value = 'sales';
+  document.getElementById('c-status').value = 'active';
+  document.getElementById('form-title').textContent = '➕ Новая кампания';
+  document.getElementById('save-btn').textContent = 'Создать';
+  document.getElementById('cancel-btn').style.display = 'none';
+  setStatus('', 'gray');
+}
+
+async function deleteCampaign(id, name) {
+  if (!confirm(`Удалить кампанию «${name}»?\nДневные расходы тоже удалятся, продажи останутся.`)) return;
+  try {
+    const res = await fetch('/api/campaigns/' + id, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Ошибка');
+    loadCampaigns();
+  } catch (e) {
+    alert('Ошибка: ' + e.message);
   }
 }
 
@@ -254,15 +441,110 @@ function setStatus(text, color) {
   el.style.color = color === 'red' ? 'var(--red)' : color === 'green' ? 'var(--green)' : 'var(--hint)';
 }
 
+// ── Модалка деталей кампании ─────────────────────────────────────────────
+async function openDetail(id) {
+  currentDetailCampaign = id;
+  document.getElementById('detail-modal').classList.remove('hidden');
+
+  // Грузим метрики и дневные расходы параллельно
+  try {
+    const [metricsRes, dailyRes] = await Promise.all([
+      fetch('/api/campaigns/' + id + '/metrics'),
+      fetch('/api/campaigns/' + id + '/daily'),
+    ]);
+    const m = await metricsRes.json();
+    const daily = await dailyRes.json();
+
+    document.getElementById('detail-title').textContent = m.campaign?.name || 'Кампания';
+    const kpis = document.getElementById('detail-kpis');
+    const c = m.campaign || {};
+    kpis.innerHTML = `
+      <div class="kpi"><div class="kpi-value">${fmtMoney(c.budget_planned)}</div><div class="kpi-label">Бюджет план</div></div>
+      <div class="kpi"><div class="kpi-value">${fmtMoney(m.spent)}</div><div class="kpi-label">Потрачено</div></div>
+      <div class="kpi"><div class="kpi-value">${fmtMoney(m.revenue)}</div><div class="kpi-label">Выручка</div></div>
+      <div class="kpi"><div class="kpi-value ${roiClass(m.roi_percent)}">${roiText(m.roi_percent)}</div><div class="kpi-label">ROI</div></div>
+      <div class="kpi"><div class="kpi-value">${m.orders || 0}</div><div class="kpi-label">Заказов</div></div>
+      <div class="kpi"><div class="kpi-value">${m.unique_customers || 0}</div><div class="kpi-label">Уник. клиентов</div></div>
+      <div class="kpi"><div class="kpi-value">${m.avg_check ? fmtMoney(m.avg_check) : '—'}</div><div class="kpi-label">Средний чек</div></div>
+      <div class="kpi"><div class="kpi-value">${m.cost_per_order ? fmtMoney(m.cost_per_order) : '—'}</div><div class="kpi-label">CPO</div></div>
+    `;
+
+    renderDaily(daily);
+
+    document.getElementById('d-date').valueAsDate = new Date();
+  } catch (e) {
+    alert('Ошибка загрузки: ' + e.message);
+  }
+}
+
+function renderDaily(rows) {
+  const tbody = document.getElementById('daily-tbody');
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">Нет данных. Введи первый день сверху.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td>${(r.date || '').slice(0,10)}</td>
+    <td>${fmtMoney(r.cost)}</td>
+    <td>${r.impressions ?? '—'}</td>
+    <td>${r.clicks ?? '—'}</td>
+    <td>${r.conversions ?? '—'}</td>
+    <td><code>${r.source || 'manual'}</code></td>
+    <td><button class="btn-icon" onclick="deleteDaily('${(r.date || '').slice(0,10)}')" title="Удалить">🗑</button></td>
+  </tr>`).join('');
+}
+
+async function addDaily() {
+  const date = document.getElementById('d-date').value;
+  const cost = document.getElementById('d-cost').value;
+  if (!date || cost === '') { alert('Дата и стоимость обязательны'); return; }
+  try {
+    const res = await fetch('/api/campaigns/' + currentDetailCampaign + '/daily', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date, cost: parseFloat(cost),
+        impressions: document.getElementById('d-impressions').value || null,
+        clicks: document.getElementById('d-clicks').value || null,
+        conversions: document.getElementById('d-conversions').value || null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Ошибка');
+    document.getElementById('d-cost').value = '';
+    document.getElementById('d-impressions').value = '';
+    document.getElementById('d-clicks').value = '';
+    document.getElementById('d-conversions').value = '';
+    openDetail(currentDetailCampaign); // перезагрузка
+    loadCampaigns(); // обновить spent в общей таблице
+  } catch (e) {
+    alert('Ошибка: ' + e.message);
+  }
+}
+
+async function deleteDaily(date) {
+  if (!confirm('Удалить расход за ' + date + '?')) return;
+  try {
+    await fetch(`/api/campaigns/${currentDetailCampaign}/daily/${date}`, { method: 'DELETE' });
+    openDetail(currentDetailCampaign);
+    loadCampaigns();
+  } catch (e) { alert(e.message); }
+}
+
+function closeDetail() {
+  document.getElementById('detail-modal').classList.add('hidden');
+  currentDetailCampaign = null;
+}
+
 // ── Статистика продаж ──────────────────────────────────────────────────
 async function loadSalesStats() {
   try {
     const res = await fetch('/api/sales/stats');
     const s = await res.json();
-    document.getElementById('stat-orders').textContent = fmt(s.total_orders || 0);
-    document.getElementById('stat-revenue').textContent = fmt(s.total_revenue || 0);
-    document.getElementById('stat-promo').textContent = fmt(s.orders_with_promo || 0);
-    document.getElementById('stat-customers').textContent = fmt(s.unique_customers || 0);
+    document.getElementById('stat-orders').textContent = fmt(s.total_orders);
+    document.getElementById('stat-revenue').textContent = fmt(s.total_revenue);
+    document.getElementById('stat-promo').textContent = fmt(s.orders_with_promo);
+    document.getElementById('stat-customers').textContent = fmt(s.unique_customers);
   } catch (e) { /* silent */ }
 }
 
@@ -308,7 +590,6 @@ async function uploadCsv() {
     }
     resultEl.innerHTML = html;
 
-    // Обновляем стату + кампании (ROI пересчитается)
     loadSalesStats();
     loadCampaigns();
   } catch (e) {
@@ -316,8 +597,131 @@ async function uploadCsv() {
   }
 }
 
-loadChannels();
-loadCampaigns();
+// ── AI-аналитик ───────────────────────────────────────────────────────
+async function runAnalysis() {
+  const period = document.getElementById('analyze-period').value;
+  const btn = document.getElementById('analyze-btn');
+  const statusEl = document.getElementById('analyze-status');
+  const container = document.getElementById('report-container');
+  if (!period) { statusEl.textContent = 'Выбери месяц'; return; }
+
+  btn.disabled = true;
+  statusEl.textContent = '⏳ Собираем данные и спрашиваем модель... (10-30 сек)';
+  container.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/analyze?period=' + period, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      statusEl.textContent = '✗ ' + (data.error || 'Нет данных за этот период');
+      return;
+    }
+    statusEl.textContent = `✓ Готово. Использовано: ${data.data_used.campaigns_count} кампаний, ${data.data_used.total_orders} заказов`;
+    renderReport(data.report, period);
+  } catch (e) {
+    statusEl.textContent = '✗ ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderReport(r, period) {
+  const c = document.getElementById('report-container');
+  let html = `<div class="report"><h3 style="margin-top:0">📈 Отчёт за ${period}</h3>`;
+
+  if (r.summary) {
+    html += `<div class="report-summary">${escapeHtml(r.summary)}</div>`;
+  }
+
+  if (r.top_campaigns && r.top_campaigns.length) {
+    html += '<div class="insight-block"><h3>🏆 Топ-кампании</h3>';
+    html += r.top_campaigns.map(t =>
+      `<div class="insight-item low"><strong>${escapeHtml(t.name)}</strong> — ROI ${t.roi_percent}%<br><small>${escapeHtml(t.comment || '')}</small></div>`
+    ).join('');
+    html += '</div>';
+  }
+
+  if (r.weak_campaigns && r.weak_campaigns.length) {
+    html += '<div class="insight-block"><h3>⚠️ Проблемные</h3>';
+    html += r.weak_campaigns.map(t =>
+      `<div class="insight-item high"><strong>${escapeHtml(t.name)}</strong> — ROI ${t.roi_percent}%<br><small><b>Проблема:</b> ${escapeHtml(t.issue || '')}</small><br><small><b>Действие:</b> ${escapeHtml(t.action || '')}</small></div>`
+    ).join('');
+    html += '</div>';
+  }
+
+  if (r.channel_insights && r.channel_insights.length) {
+    html += '<div class="insight-block"><h3>📡 Каналы</h3>';
+    html += r.channel_insights.map(ci => {
+      const cls = ci.performance === 'rising' ? 'low' : ci.performance === 'declining' ? 'high' : 'medium';
+      return `<div class="insight-item ${cls}"><strong>${escapeHtml(ci.channel)}</strong> — ${escapeHtml(ci.performance || '')}<br><small>${escapeHtml(ci.comment || '')}</small></div>`;
+    }).join('');
+    html += '</div>';
+  }
+
+  if (r.anomalies && r.anomalies.length) {
+    html += '<div class="insight-block"><h3>🔍 Аномалии</h3>';
+    html += r.anomalies.map(a => `<div class="insight-item medium">${escapeHtml(a)}</div>`).join('');
+    html += '</div>';
+  }
+
+  if (r.recommendations && r.recommendations.length) {
+    html += '<div class="insight-block"><h3>💡 Рекомендации</h3>';
+    html += r.recommendations.map(rec =>
+      `<div class="insight-item ${rec.priority || 'medium'}"><strong>[${(rec.priority || '').toUpperCase()}] ${escapeHtml(rec.action || '')}</strong><br><small><b>Почему:</b> ${escapeHtml(rec.rationale || '')}</small><br><small><b>Ожидаемый эффект:</b> ${escapeHtml(rec.expected_impact || '')}</small></div>`
+    ).join('');
+    html += '</div>';
+  }
+
+  if (r.next_month_strategy) {
+    html += `<div class="insight-block"><h3>🎯 Стратегия на следующий месяц</h3>
+      <div style="background:#e3eaf3;border-left:4px solid var(--blue);padding:12px 14px;border-radius:4px;white-space:pre-wrap">${escapeHtml(r.next_month_strategy)}</div></div>`;
+  }
+
+  html += '</div>';
+  c.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+const reportsCache = {};
+async function loadReports() {
+  try {
+    const res = await fetch('/api/reports');
+    const list = await res.json();
+    if (!list.length) {
+      document.getElementById('reports-history').textContent = ' — пока пусто';
+      return;
+    }
+    list.forEach(r => { reportsCache[r.id] = r; });
+    document.getElementById('reports-history').innerHTML = ' — ' + list.slice(0, 8).map(r =>
+      `<a href="#" onclick="showOldReport(${r.id});return false">${escapeHtml(r.period_label)}</a>`
+    ).join(' · ');
+  } catch (e) { /* silent */ }
+}
+
+function showOldReport(id) {
+  const r = reportsCache[id];
+  if (!r) return;
+  try {
+    const insights = typeof r.insights === 'string' ? JSON.parse(r.insights) : r.insights;
+    renderReport(insights, r.period_label);
+  } catch (e) { alert('Ошибка чтения отчёта'); }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+document.getElementById('detail-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'detail-modal') closeDetail();
+});
+
+// Дефолт period = текущий месяц
+document.getElementById('analyze-period').value = new Date().toISOString().slice(0, 7);
+
+loadChannels().then(loadCampaigns);
 loadSalesStats();
 setInterval(loadCampaigns, 30000);
 setInterval(loadSalesStats, 60000);

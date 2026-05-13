@@ -9,6 +9,8 @@ const { migrate } = require('./lib/migrate');
 const channels = require('./routes/channels');
 const campaigns = require('./routes/campaigns');
 const sales = require('./routes/sales');
+const daily = require('./routes/daily');
+const analyze = require('./routes/analyze');
 
 const app = express();
 // Лимит 10 МБ — для CSV-импорта продаж за месяц должно с запасом хватить
@@ -43,6 +45,15 @@ app.get('/api/campaigns/:id/metrics', campaigns.metrics);
 app.post('/api/sales/import-csv', sales.importCsv);
 app.get('/api/sales/recent', sales.recent);
 app.get('/api/sales/stats', sales.stats);
+
+// ── Дневные расходы по кампании ──────────────────────────────────────────
+app.get('/api/campaigns/:id/daily', daily.list);
+app.post('/api/campaigns/:id/daily', daily.upsert);
+app.delete('/api/campaigns/:id/daily/:date', daily.remove);
+
+// ── LLM-аналитик ──────────────────────────────────────────────────────────
+app.post('/api/analyze', analyze.analyze);
+app.get('/api/reports', analyze.listReports);
 
 // ── Статика (минимальный UI пока — потом интегрируем во вкладку dashboard'а) ─
 app.use('/', express.static(path.join(__dirname, '..', 'web')));
