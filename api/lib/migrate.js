@@ -57,16 +57,17 @@ async function migrate() {
   } else {
     console.log(`[migrate] ✓ Применено: ${count}`);
   }
-  await pool.end();
 }
 
-// Если запущен как CLI (npm run migrate) — выполняем сразу.
-// Если импортирован — экспортируем функцию для использования в server.js
+// Если запущен как CLI (npm run migrate) — выполняем и закрываем pool.
+// Если импортирован сервером — pool остаётся открытым для последующих запросов.
 if (require.main === module) {
-  migrate().catch(err => {
-    console.error('[migrate] FATAL:', err);
-    process.exit(1);
-  });
+  migrate()
+    .then(() => pool.end())
+    .catch(err => {
+      console.error('[migrate] FATAL:', err);
+      process.exit(1);
+    });
 }
 
 module.exports = { migrate };
