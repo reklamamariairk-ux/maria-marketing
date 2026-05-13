@@ -11,6 +11,7 @@ const campaigns = require('./routes/campaigns');
 const sales = require('./routes/sales');
 const daily = require('./routes/daily');
 const analyze = require('./routes/analyze');
+const integrations = require('./routes/integrations');
 
 const app = express();
 // Лимит 10 МБ — для CSV-импорта продаж за месяц должно с запасом хватить
@@ -54,6 +55,11 @@ app.delete('/api/campaigns/:id/daily/:date', daily.remove);
 // ── LLM-аналитик ──────────────────────────────────────────────────────────
 app.post('/api/analyze', analyze.analyze);
 app.get('/api/reports', analyze.listReports);
+
+// ── Интеграции (Авито/блогеры — CSV; Я.Директ — API) ─────────────────────
+app.post('/api/campaigns/:id/daily/import-csv', integrations.importDailyCsv);
+app.get('/api/integrations/status', integrations.status);
+app.post('/api/integrations/yandex-direct/sync', integrations.yandexDirectSync);
 
 // ── Статика (минимальный UI пока — потом интегрируем во вкладку dashboard'а) ─
 app.use('/', express.static(path.join(__dirname, '..', 'web')));

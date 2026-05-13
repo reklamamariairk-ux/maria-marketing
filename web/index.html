@@ -243,8 +243,21 @@
 
     <h3>💰 Дневные расходы</h3>
     <p style="font-size:12px;color:var(--hint);margin:0 0 10px">
-      Для оффлайн-каналов вводи руками. Онлайн позже подтянем через API.
+      Вводи руками (для оффлайн) или импортируй CSV (Авито, блогеры). Для Я.Директ — авто-синк через API.
     </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button class="btn btn-sm btn-ghost" onclick="document.getElementById('daily-csv-block').classList.toggle('hidden')">📥 Импорт CSV</button>
+      <button class="btn btn-sm btn-ghost" onclick="syncYandexDirect()" id="yd-sync-btn">🔄 Синк Я.Директ</button>
+    </div>
+    <div id="daily-csv-block" class="hidden" style="border:1px dashed var(--border);border-radius:8px;padding:10px;margin-bottom:10px">
+      <p style="font-size:12px;color:var(--hint);margin:0 0 8px">
+        CSV с колонками: <code>date</code>, <code>cost</code> (обязательно), плюс <code>impressions</code>/<code>clicks</code>/<code>conversions</code>.
+      </p>
+      <input type="file" id="daily-csv-file" accept=".csv,text/csv">
+      <input id="daily-csv-source" placeholder="источник (avito/blogger/...)" style="margin-top:6px">
+      <button class="btn btn-sm" onclick="uploadDailyCsv()">Загрузить</button>
+      <span id="daily-csv-status" style="margin-left:10px;font-size:12px;color:var(--hint)"></span>
+    </div>
     <div style="display:grid;grid-template-columns:140px 120px 100px 100px 100px auto;gap:8px;align-items:end;margin-bottom:12px">
       <div><label>Дата</label><input type="date" id="d-date"></div>
       <div><label>Стоимость (₽)</label><input type="number" id="d-cost" min="0" step="0.01"></div>
@@ -520,6 +533,53 @@ async function addDaily() {
   } catch (e) {
     alert('Ошибка: ' + e.message);
   }
+}
+
+async function uploadDailyCsv() {
+  const fileInput = document.getElementById('daily-csv-file');
+  const sourceInput = document.getElementById('daily-csv-source');
+  const statusEl = document.getElementById('daily-csv-status');
+  const file = fileInput.files[0];
+  if (!file) { statusEl.textContent = 'Выбери файл'; return; }
+  statusEl.textContent = '⏳ Загрузка...';
+  try {
+    const text = await file.text();
+    const res = await fetch(`/api/campaigns/${currentDetailCampaign}/daily/import-csv`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ csv: text, source: sourceInput.value.trim() || 'csv-import' }),
+    });
+    const data = await res.json();
+    if (!res.ok) { statusEl.textContent = '✗ ' + (data.error || 'Ошибка'); return; }
+    statusEl.textContent = `✓ Загружено ${data.inserted} из ${data.total_rows}${data.error_count ? ` (ошибок: ${data.error_count})` : ''}`;
+    fileInput.value = '';
+    openDetail(currentDetailCampaign);
+    loadCampaigns();
+  } catch (e) { statusEl.textContent = '✗ ' + e.message; }
+}
+
+async function syncYandexDirect() {
+  const today = new Date();
+  const from = prompt('Период с (YYYY-MM-DD):', new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10));
+  if (!from) return;
+  const to = prompt('Период по (YYYY-MM-DD):', today.toISOString().slice(0,10));
+  if (!to) return;
+  const yIds = prompt('ID кампаний в Я.Директ через запятую (пусто = все):', '');
+
+  const btn = document.getElementById('yd-sync-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Синк...';
+  try {
+    const qs = new URLSearchParams({ campaign_id: currentDetailCampaign, from, to });
+    if (yIds) qs.set('yandex_campaign_ids', yIds);
+    const res = await fetch('/api/integrations/yandex-direct/sync?' + qs, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { alert('Ошибка: ' + (data.error || 'неизвестно')); return; }
+    alert(`✓ Синхронизировано дней: ${data.days_synced}`);
+    openDetail(currentDetailCampaign);
+    loadCampaigns();
+  } catch (e) { alert('Ошибка: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '🔄 Синк Я.Директ'; }
 }
 
 async function deleteDaily(date) {
