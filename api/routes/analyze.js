@@ -62,11 +62,14 @@ async function analyze(req, res) {
               ELSE 0 END AS unique_customers
        FROM mk_campaigns c
        JOIN mk_channels ch ON ch.id = c.channel_id
-       WHERE c.status IN ('active', 'completed')
-         AND (c.start_date::text LIKE $1 OR c.end_date::text LIKE $1 OR
-              (c.start_date <= ($1 || '-01')::date AND (c.end_date IS NULL OR c.end_date >= ($1 || '-01')::date)))
+       WHERE c.status IN ('active', 'completed', 'paused')
+         AND (
+           c.start_date::text LIKE $1
+           OR c.end_date::text LIKE $1
+           OR (c.start_date <= ($2)::date AND (c.end_date IS NULL OR c.end_date >= ($2)::date))
+         )
        ORDER BY revenue DESC`,
-      [period + '%']
+      [period + '%', period + '-01']
     );
 
     // Общая статистика продаж за период
