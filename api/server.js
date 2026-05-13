@@ -8,9 +8,12 @@ const path = require('path');
 const { migrate } = require('./lib/migrate');
 const channels = require('./routes/channels');
 const campaigns = require('./routes/campaigns');
+const sales = require('./routes/sales');
 
 const app = express();
-app.use(express.json({ limit: '2mb' }));
+// Лимит 10 МБ — для CSV-импорта продаж за месяц должно с запасом хватить
+app.use(express.json({ limit: '10mb' }));
+app.use(express.text({ type: 'text/csv', limit: '10mb' }));
 
 // CORS — пока открыто, в проде ограничим origin'ами dashboard'а
 app.use((req, res, next) => {
@@ -35,6 +38,11 @@ app.post('/api/campaigns', campaigns.create);
 app.put('/api/campaigns/:id', campaigns.update);
 app.delete('/api/campaigns/:id', campaigns.remove);
 app.get('/api/campaigns/:id/metrics', campaigns.metrics);
+
+// ── Продажи ───────────────────────────────────────────────────────────────
+app.post('/api/sales/import-csv', sales.importCsv);
+app.get('/api/sales/recent', sales.recent);
+app.get('/api/sales/stats', sales.stats);
 
 // ── Статика (минимальный UI пока — потом интегрируем во вкладку dashboard'а) ─
 app.use('/', express.static(path.join(__dirname, '..', 'web')));

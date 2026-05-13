@@ -39,6 +39,8 @@
     .status-planned { background: #fff4e5; color: #c77700; }
     .status-completed { background: #f0f0f0; color: var(--hint); }
     .empty { text-align: center; padding: 40px; color: var(--hint); }
+    .hidden { display: none !important; }
+    code { background: #f3f3f3; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -50,6 +52,45 @@
 </header>
 
 <div class="container">
+
+  <!-- Стата продаж + импорт CSV -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <h2 style="margin:0">📥 Продажи в БД</h2>
+      <button class="btn-ghost btn" onclick="document.getElementById('csv-block').classList.toggle('hidden')">Импорт CSV</button>
+    </div>
+
+    <div id="sales-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:10px">
+      <div style="text-align:center">
+        <div style="font-size:24px;font-weight:800" id="stat-orders">—</div>
+        <div style="font-size:11px;color:var(--hint)">Заказов всего</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:24px;font-weight:800" id="stat-revenue">—</div>
+        <div style="font-size:11px;color:var(--hint)">Выручка ₽</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:24px;font-weight:800" id="stat-promo">—</div>
+        <div style="font-size:11px;color:var(--hint)">С промокодом</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:24px;font-weight:800" id="stat-customers">—</div>
+        <div style="font-size:11px;color:var(--hint)">Уникальных клиентов</div>
+      </div>
+    </div>
+
+    <div id="csv-block" class="hidden" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <p style="font-size:13px;color:var(--hint);line-height:1.5;margin:0 0 12px">
+        Выгрузка из 1С в CSV (UTF-8, разделитель <code>;</code> или <code>,</code>).<br>
+        <strong>Обязательные колонки:</strong> <code>date</code>/<code>дата</code> и <code>amount</code>/<code>сумма</code><br>
+        <strong>Желательно:</strong> <code>phone</code>/<code>телефон</code>, <code>promo_code</code>/<code>промокод</code>, <code>store_id</code>, <code>product_id</code>, <code>cost</code>, <code>quantity</code>
+      </p>
+      <input type="file" id="csv-file" accept=".csv,text/csv" style="margin-bottom:8px">
+      <button class="btn" onclick="uploadCsv()">Загрузить</button>
+      <span id="csv-status" style="margin-left:12px;font-size:13px;color:var(--hint)"></span>
+      <div id="csv-result" style="margin-top:10px;font-size:13px"></div>
+    </div>
+  </div>
 
   <div class="card">
     <h2>Новая кампания</h2>
@@ -213,9 +254,73 @@ function setStatus(text, color) {
   el.style.color = color === 'red' ? 'var(--red)' : color === 'green' ? 'var(--green)' : 'var(--hint)';
 }
 
+// ── Статистика продаж ──────────────────────────────────────────────────
+async function loadSalesStats() {
+  try {
+    const res = await fetch('/api/sales/stats');
+    const s = await res.json();
+    document.getElementById('stat-orders').textContent = fmt(s.total_orders || 0);
+    document.getElementById('stat-revenue').textContent = fmt(s.total_revenue || 0);
+    document.getElementById('stat-promo').textContent = fmt(s.orders_with_promo || 0);
+    document.getElementById('stat-customers').textContent = fmt(s.unique_customers || 0);
+  } catch (e) { /* silent */ }
+}
+
+// ── Импорт CSV ────────────────────────────────────────────────────────
+async function uploadCsv() {
+  const fileInput = document.getElementById('csv-file');
+  const statusEl = document.getElementById('csv-status');
+  const resultEl = document.getElementById('csv-result');
+  const file = fileInput.files[0];
+  if (!file) { statusEl.textContent = 'Выбери файл'; return; }
+
+  statusEl.textContent = '⏳ Читаю...';
+  resultEl.innerHTML = '';
+  try {
+    const text = await file.text();
+    statusEl.textContent = '⏳ Загрузка...';
+    const res = await fetch('/api/sales/import-csv', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ csv: text }),
+    });
+    const data = await res.json();
+    if (!res.ok) { statusEl.textContent = '✗ ' + (data.error || 'Ошибка'); return; }
+
+    statusEl.textContent = '';
+    let html = `<div style="background:#e6f7ee;border:1px solid var(--green);border-radius:8px;padding:10px;margin-bottom:8px">
+      <strong style="color:var(--green)">✓ Загружено: ${data.inserted} из ${data.total_rows}</strong>
+    </div>`;
+
+    if (data.columns_mapped) {
+      html += `<div style="font-size:12px;color:var(--hint);margin-bottom:8px">Распознанные колонки: ${
+        Object.entries(data.columns_mapped).map(([k,v]) => `<code>${k}</code>→«${v}»`).join(', ')
+      }</div>`;
+    }
+
+    if (data.error_count > 0) {
+      html += `<details style="margin-top:8px">
+        <summary style="cursor:pointer;color:var(--red);font-weight:600">Ошибок: ${data.error_count}</summary>
+        <ul style="margin:6px 0 0 18px;padding:0;font-size:12px;color:var(--hint);max-height:200px;overflow-y:auto">
+          ${data.errors.map(e => `<li>Строка ${e.line}: ${e.error}</li>`).join('')}
+        </ul>
+      </details>`;
+    }
+    resultEl.innerHTML = html;
+
+    // Обновляем стату + кампании (ROI пересчитается)
+    loadSalesStats();
+    loadCampaigns();
+  } catch (e) {
+    statusEl.textContent = '✗ ' + e.message;
+  }
+}
+
 loadChannels();
 loadCampaigns();
+loadSalesStats();
 setInterval(loadCampaigns, 30000);
+setInterval(loadSalesStats, 60000);
 </script>
 </body>
 </html>
