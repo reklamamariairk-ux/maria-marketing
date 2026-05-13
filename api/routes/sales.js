@@ -126,23 +126,28 @@ async function importCsv(req, res) {
           );
           inserted++;
 
-          // Обновление атрибуции клиента по первому касанию
+          // Обновление атрибуции клиента по первому касанию.
+          // Сначала ищем кампанию по промокоду — простой SELECT, потом вставляем.
           if (row.customer_phone_normalized) {
+            let campaignId = null;
+            if (row.promo_code) {
+              const { rows: cr } = await client.query(
+                `SELECT id FROM mk_campaigns WHERE promo_code = $1::text LIMIT 1`,
+                [row.promo_code]
+              );
+              campaignId = cr[0]?.id ?? null;
+            }
             await client.query(
               `INSERT INTO mk_customer_attribution
                  (phone_normalized, first_promo_code, first_campaign_id,
                   first_purchase_date, first_purchase_sum, total_purchases, total_sum, last_purchase_date)
-               VALUES (
-                 $1, $2,
-                 (SELECT id FROM mk_campaigns WHERE promo_code = $2 LIMIT 1),
-                 $3::date, $4, 1, $4, $3::date
-               )
+               VALUES ($1::text, $2::text, $3::int, $4::date, $5::numeric, 1, $5::numeric, $4::date)
                ON CONFLICT (phone_normalized) DO UPDATE SET
                  total_purchases = mk_customer_attribution.total_purchases + 1,
                  total_sum = mk_customer_attribution.total_sum + EXCLUDED.first_purchase_sum,
                  last_purchase_date = EXCLUDED.first_purchase_date,
                  updated_at = NOW()`,
-              [row.customer_phone_normalized, row.promo_code, row.sold_at.slice(0,10), row.amount]
+              [row.customer_phone_normalized, row.promo_code, campaignId, row.sold_at.slice(0,10), row.amount]
             );
           }
         }
