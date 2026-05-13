@@ -6,16 +6,42 @@
 -- конфликтуют с существующими (sales, stores, products, marketing_metrics).
 -- Существующая marketing_metrics остаётся как агрегатное хранилище.
 
--- ── Расширение sales для атрибуции ────────────────────────────────────────
+-- ── Таблица продаж ────────────────────────────────────────────────────────
+-- Standalone-режим: создаём свою sales-таблицу (мы изолированы от dashboard'а).
+-- Когда 1С переедет на веб — будет шить туда через API/CSV-импорт.
+-- Если в БД уже есть sales (общая с dashboard) — только ALTER ADD COLUMN.
 
-ALTER TABLE sales
-  ADD COLUMN IF NOT EXISTS promo_code VARCHAR(50),
-  ADD COLUMN IF NOT EXISTS customer_phone_normalized VARCHAR(20);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables
+             WHERE table_schema = 'public' AND table_name = 'sales') THEN
+    -- Старая sales из dashboard'а — расширяем
+    ALTER TABLE sales ADD COLUMN IF NOT EXISTS promo_code VARCHAR(50);
+    ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_phone_normalized VARCHAR(20);
+  ELSE
+    -- Чистая БД — создаём свою sales
+    CREATE TABLE sales (
+      id              BIGSERIAL PRIMARY KEY,
+      period          TEXT NOT NULL,                    -- '2026-05'
+      store_id        TEXT,
+      product_id      TEXT,
+      amount          NUMERIC(14,2) NOT NULL DEFAULT 0, -- выручка с учётом скидок
+      cost            NUMERIC(14,2) NOT NULL DEFAULT 0, -- себестоимость
+      gross_profit    NUMERIC(14,2) NOT NULL DEFAULT 0,
+      quantity        NUMERIC(14,2) NOT NULL DEFAULT 0,
+      promo_code      VARCHAR(50),
+      customer_phone_normalized VARCHAR(20),
+      sold_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_sales_promo_code
   ON sales(promo_code) WHERE promo_code IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_sales_customer_phone
   ON sales(customer_phone_normalized) WHERE customer_phone_normalized IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_sales_period ON sales(period);
+CREATE INDEX IF NOT EXISTS idx_sales_sold_at ON sales(sold_at DESC);
 
 -- ── Справочник каналов маркетинга ─────────────────────────────────────────
 
