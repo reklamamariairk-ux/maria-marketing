@@ -60,6 +60,9 @@ app.get('/api/reports', analyze.listReports);
 app.post('/api/campaigns/:id/daily/import-csv', integrations.importDailyCsv);
 app.get('/api/integrations/status', integrations.status);
 app.post('/api/integrations/yandex-direct/sync', integrations.yandexDirectSync);
+app.get('/api/integrations/yandex-metrika/counters', integrations.metrikaCounters);
+app.get('/api/integrations/yandex-metrika/goals', integrations.metrikaGoals);
+app.post('/api/integrations/yandex-metrika/sync', integrations.metrikaSync);
 
 // ── Статика (минимальный UI пока — потом интегрируем во вкладку dashboard'а) ─
 app.use('/', express.static(path.join(__dirname, '..', 'web')));

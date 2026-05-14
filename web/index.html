@@ -248,6 +248,7 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="btn btn-sm btn-ghost" onclick="document.getElementById('daily-csv-block').classList.toggle('hidden')">📥 Импорт CSV</button>
       <button class="btn btn-sm btn-ghost" onclick="syncYandexDirect()" id="yd-sync-btn">🔄 Синк Я.Директ</button>
+      <button class="btn btn-sm btn-ghost" onclick="syncYandexMetrika()" id="ym-sync-btn">📊 Синк Метрики</button>
     </div>
     <div id="daily-csv-block" class="hidden" style="border:1px dashed var(--border);border-radius:8px;padding:10px;margin-bottom:10px">
       <p style="font-size:12px;color:var(--hint);margin:0 0 8px">
@@ -556,6 +557,67 @@ async function uploadDailyCsv() {
     openDetail(currentDetailCampaign);
     loadCampaigns();
   } catch (e) { statusEl.textContent = '✗ ' + e.message; }
+}
+
+async function syncYandexMetrika() {
+  // Шаг 1 — выбрать счётчик
+  let counters = [];
+  try {
+    const r = await fetch('/api/integrations/yandex-metrika/counters');
+    counters = await r.json();
+    if (!Array.isArray(counters) || counters.length === 0) {
+      alert('Метрика: токен не настроен или счётчиков нет. ' + (counters.error || ''));
+      return;
+    }
+  } catch (e) { alert('Ошибка списка счётчиков: ' + e.message); return; }
+
+  const counterChoices = counters.map((c, i) => `${i+1}. [${c.id}] ${c.name} — ${c.site}`).join('\n');
+  const pick = prompt(`Какой счётчик использовать?\n\n${counterChoices}\n\nВведи номер (1–${counters.length}) или counter_id напрямую:`);
+  if (!pick) return;
+  const idxOrId = parseInt(pick.trim(), 10);
+  const counter = isNaN(idxOrId) ? null
+    : (idxOrId >= 1 && idxOrId <= counters.length) ? counters[idxOrId - 1]
+    : counters.find(c => c.id === idxOrId);
+  if (!counter) { alert('Не нашёл такой счётчик'); return; }
+
+  // Шаг 2 — UTM-фильтр для атрибуции к этой кампании
+  const utmCampaign = prompt('utm_campaign (точное значение из URL рекламы, обычно совпадает с промокодом):', '');
+  // Шаг 3 — период
+  const today = new Date();
+  const from = prompt('Период с (YYYY-MM-DD):', new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10));
+  if (!from) return;
+  const to = prompt('Период по (YYYY-MM-DD):', today.toISOString().slice(0,10));
+  if (!to) return;
+  // Шаг 4 — цели (опц.)
+  let goalIds = '';
+  try {
+    const gr = await fetch('/api/integrations/yandex-metrika/goals?counter_id=' + counter.id);
+    const goals = await gr.json();
+    if (Array.isArray(goals) && goals.length) {
+      const goalsList = goals.map((g, i) => `${i+1}. [${g.id}] ${g.name} (${g.type})`).join('\n');
+      goalIds = prompt(`Цели для подсчёта конверсий?\n\n${goalsList}\n\nВведи ID через запятую (или пусто — без целей):`, '') || '';
+    }
+  } catch {}
+
+  const btn = document.getElementById('ym-sync-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Синк...';
+  try {
+    const qs = new URLSearchParams({
+      campaign_id: currentDetailCampaign,
+      counter_id: counter.id,
+      from, to,
+    });
+    if (utmCampaign) qs.set('utm_campaign', utmCampaign);
+    if (goalIds) qs.set('goal_ids', goalIds);
+    const res = await fetch('/api/integrations/yandex-metrika/sync?' + qs, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { alert('Ошибка: ' + (data.error || 'неизвестно')); return; }
+    alert(`✓ Метрика синхронизирована\nДней: ${data.days_synced}`);
+    openDetail(currentDetailCampaign);
+    loadCampaigns();
+  } catch (e) { alert('Ошибка: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '📊 Синк Метрики'; }
 }
 
 async function syncYandexDirect() {

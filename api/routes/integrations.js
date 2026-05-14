@@ -5,6 +5,7 @@
 const { pool } = require('../lib/db');
 const { parseCsv, parseAmount, parseDate } = require('../lib/csv');
 const yandexDirect = require('../lib/yandex-direct');
+const yandexMetrika = require('../lib/yandex-metrika');
 
 // Алиасы колонок CSV с расходами по дням
 const DAILY_ALIASES = {
@@ -188,4 +189,89 @@ async function yandexDirectSync(req, res) {
   }
 }
 
-module.exports = { importDailyCsv, status, yandexDirectSync };
+// GET /api/integrations/yandex-metrika/counters — список счётчиков
+async function metrikaCounters(_req, res) {
+  try {
+    if (!process.env.YANDEX_METRIKA_TOKEN) {
+      res.status(400).json({ error: 'YANDEX_METRIKA_TOKEN не задан в env' }); return;
+    }
+    const counters = await yandexMetrika.listCounters({ token: process.env.YANDEX_METRIKA_TOKEN });
+    res.json(counters);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// GET /api/integrations/yandex-metrika/goals?counter_id=...
+async function metrikaGoals(req, res) {
+  try {
+    if (!process.env.YANDEX_METRIKA_TOKEN) {
+      res.status(400).json({ error: 'YANDEX_METRIKA_TOKEN не задан в env' }); return;
+    }
+    const counterId = req.query.counter_id;
+    if (!counterId) { res.status(400).json({ error: 'counter_id обязателен' }); return; }
+    const goals = await yandexMetrika.listGoals({
+      token: process.env.YANDEX_METRIKA_TOKEN,
+      counterId,
+    });
+    res.json(goals);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// POST /api/integrations/yandex-metrika/sync
+// Query: campaign_id, counter_id, from, to, utm_campaign?, utm_source?, goal_ids? (csv)
+// Кладёт визиты в mk_campaign_daily.clicks и достижения целей в .conversions
+async function metrikaSync(req, res) {
+  try {
+    if (!process.env.YANDEX_METRIKA_TOKEN) {
+      res.status(400).json({ error: 'YANDEX_METRIKA_TOKEN не задан в env' }); return;
+    }
+    const campaignId = parseInt(req.query.campaign_id, 10);
+    const counterId = req.query.counter_id;
+    const from = req.query.from;
+    const to = req.query.to;
+    if (isNaN(campaignId)) { res.status(400).json({ error: 'campaign_id обязателен' }); return; }
+    if (!counterId) { res.status(400).json({ error: 'counter_id обязателен' }); return; }
+    if (!from || !to) { res.status(400).json({ error: 'from и to обязательны' }); return; }
+
+    const goalIds = req.query.goal_ids
+      ? String(req.query.goal_ids).split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean)
+      : null;
+
+    const stats = await yandexMetrika.fetchDailyStats({
+      token: process.env.YANDEX_METRIKA_TOKEN,
+      counterId,
+      from, to,
+      goalIds,
+      utmCampaign: req.query.utm_campaign || null,
+      utmSource: req.query.utm_source || null,
+    });
+
+    let updated = 0;
+    for (const day of stats) {
+      // Метрика не знает наших расходов — обновляем только clicks/conversions,
+      // не трогая cost. INSERT с cost=0, ON CONFLICT обновляет clicks/conversions
+      await pool.query(
+        `INSERT INTO mk_campaign_daily (campaign_id, date, cost, clicks, conversions, source)
+         VALUES ($1, $2::date, 0, $3, $4, 'yandex-metrika-api')
+         ON CONFLICT (campaign_id, date) DO UPDATE SET
+           clicks = EXCLUDED.clicks,
+           conversions = EXCLUDED.conversions,
+           imported_at = NOW()`,
+        [campaignId, day.date, day.visits, day.conversions]
+      );
+      updated++;
+    }
+
+    res.json({ ok: true, days_synced: updated, period: { from, to }, sample: stats.slice(0, 3) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+module.exports = {
+  importDailyCsv, status, yandexDirectSync,
+  metrikaCounters, metrikaGoals, metrikaSync,
+};
