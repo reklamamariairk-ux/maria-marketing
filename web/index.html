@@ -88,6 +88,48 @@
 
 <div class="container">
 
+  <!-- ══ СВОДКА ПО КАМПАНИИ (CPL / CAC / конверсия / ROAS по каналам) ══ -->
+  <div class="card" style="border-top:3px solid var(--brand)">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <h2 style="margin:0">🎯 Сводка по кампании</h2>
+      <div class="filter-bar" style="margin:0">
+        <div><label>С</label><input type="date" id="camp-from"></div>
+        <div><label>По</label><input type="date" id="camp-to"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn" onclick="loadCampaignOverview()">Обновить</button></div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="camp-kpis" style="margin-bottom:16px">
+      <div class="empty" style="grid-column:1/-1">Загрузка…</div>
+    </div>
+
+    <h3>По каналам трафика</h3>
+    <table id="camp-channels-table">
+      <thead><tr>
+        <th>Канал</th><th>Расход</th><th>Лиды</th><th>CPL</th>
+        <th>Заказы</th><th>CAC</th><th>Конв.</th><th>Выручка</th><th>ROAS</th><th>ДРР</th>
+      </tr></thead>
+      <tbody><tr><td colspan="10" class="empty">—</td></tr></tbody>
+    </table>
+    <p style="font-size:11px;color:var(--hint);margin:8px 0 0">
+      CPL — цена лида (расход ÷ лиды). CAC — цена заказа (расход ÷ заказы). ROAS — выручка ÷ расход.
+      Расход берётся из дневных расходов кампаний канала; лиды — из заявок по UTM. Выручка/ROAS появятся,
+      когда лид помечен «Заказ» с суммой.
+    </p>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px">
+      <h3 style="margin:0">Последние заявки</h3>
+      <button class="btn btn-sm btn-ghost" onclick="loadCampaignLeads()">↻ Обновить заявки</button>
+    </div>
+    <table id="camp-leads-table">
+      <thead><tr>
+        <th>Когда</th><th>Имя</th><th>Телефон</th><th>Канал</th><th>Кампания</th>
+        <th>Что</th><th>Статус</th><th>Выручка</th><th></th>
+      </tr></thead>
+      <tbody><tr><td colspan="9" class="empty">—</td></tr></tbody>
+    </table>
+  </div>
+
   <!-- Стата продаж + импорт CSV -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
@@ -835,6 +877,111 @@ function showOldReport(id) {
   } catch (e) { alert('Ошибка чтения отчёта'); }
 }
 
+// ── Дашборд кампании (CPL/CAC/конверсия/ROAS по каналам) ───────────────
+function fmtRub(n) {
+  if (n === null || n === undefined) return '—';
+  return Math.round(n).toLocaleString('ru-RU') + ' ₽';
+}
+function campRange() {
+  return 'from=' + (document.getElementById('camp-from').value || '') +
+         '&to=' + (document.getElementById('camp-to').value || '');
+}
+
+async function loadCampaignOverview() {
+  try {
+    const res = await fetch('/api/campaign/overview?' + campRange());
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const t = data.totals;
+
+    // KPI-карточки
+    document.getElementById('camp-kpis').innerHTML = [
+      ['Расход', fmtRub(t.spend)],
+      ['Лиды', t.leads],
+      ['CPL', fmtRub(t.cpl)],
+      ['Заказы', t.won],
+      ['CAC', fmtRub(t.cac)],
+      ['Конверсия', t.conversion != null ? t.conversion + '%' : '—'],
+      ['Выручка', fmtRub(t.revenue)],
+      ['ROAS', t.roas != null ? t.roas + '×' : '—'],
+    ].map(([label, val]) =>
+      `<div class="card kpi" style="margin:0"><div class="kpi-value">${val}</div><div class="kpi-label">${label}</div></div>`
+    ).join('');
+
+    // Таблица по каналам
+    const tb = document.querySelector('#camp-channels-table tbody');
+    if (!data.rows.length) {
+      tb.innerHTML = '<tr><td colspan="10" class="empty">Нет данных за период. Заведи расходы по кампаниям и дождись заявок с лендинга.</td></tr>';
+    } else {
+      const roasClass = (r) => r.roas == null ? '' : (r.roas >= 2 ? 'roi-positive' : r.roas >= 1 ? 'roi-neutral' : 'roi-negative');
+      tb.innerHTML = data.rows.map(r => `
+        <tr>
+          <td><strong>${escapeHtml(r.channel_name)}</strong></td>
+          <td>${fmtRub(r.spend)}</td>
+          <td>${r.leads}</td>
+          <td>${fmtRub(r.cpl)}</td>
+          <td>${r.won}</td>
+          <td>${fmtRub(r.cac)}</td>
+          <td>${r.conversion != null ? r.conversion + '%' : '—'}</td>
+          <td>${fmtRub(r.revenue)}</td>
+          <td class="${roasClass(r)}">${r.roas != null ? r.roas + '×' : '—'}</td>
+          <td>${r.drr != null ? r.drr + '%' : '—'}</td>
+        </tr>`).join('') + `
+        <tr style="border-top:2px solid var(--border);font-weight:700">
+          <td>Итого</td><td>${fmtRub(t.spend)}</td><td>${t.leads}</td><td>${fmtRub(t.cpl)}</td>
+          <td>${t.won}</td><td>${fmtRub(t.cac)}</td><td>${t.conversion != null ? t.conversion + '%' : '—'}</td>
+          <td>${fmtRub(t.revenue)}</td><td>${t.roas != null ? t.roas + '×' : '—'}</td><td>${t.drr != null ? t.drr + '%' : '—'}</td>
+        </tr>`;
+    }
+  } catch (e) {
+    document.getElementById('camp-kpis').innerHTML = '<div class="empty" style="grid-column:1/-1;color:var(--red)">Ошибка: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+async function loadCampaignLeads() {
+  try {
+    const res = await fetch('/api/campaign/leads?' + campRange() + '&limit=100');
+    const list = await res.json();
+    const tb = document.querySelector('#camp-leads-table tbody');
+    if (!Array.isArray(list) || !list.length) {
+      tb.innerHTML = '<tr><td colspan="9" class="empty">Заявок за период пока нет</td></tr>';
+      return;
+    }
+    const stOpts = (cur) => ['new', 'qualified', 'won', 'lost'].map(s =>
+      `<option value="${s}"${s === cur ? ' selected' : ''}>${({new:'Новый',qualified:'Квал.',won:'Заказ',lost:'Отказ'})[s]}</option>`).join('');
+    tb.innerHTML = list.map(r => {
+      const d = new Date(r.created_at);
+      const when = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' +
+                   d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      return `<tr>
+        <td style="white-space:nowrap">${when}</td>
+        <td>${escapeHtml(r.name || '—')}</td>
+        <td style="white-space:nowrap">${escapeHtml(r.phone || '—')}</td>
+        <td>${escapeHtml(r.channel_code || '—')}</td>
+        <td>${escapeHtml(r.utm_campaign || '—')}</td>
+        <td>${escapeHtml(r.description || '—')}</td>
+        <td><select class="btn-sm" style="padding:3px" onchange="setLeadStatus(${r.id}, this.value)">${stOpts(r.status)}</select></td>
+        <td><input type="number" value="${Number(r.revenue) || 0}" style="width:90px;padding:4px" onchange="setLeadRevenue(${r.id}, this.value)"></td>
+        <td><button class="btn-icon" title="Удалить" onclick="deleteLead(${r.id})">🗑</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) { /* silent */ }
+}
+
+async function setLeadStatus(id, status) {
+  await fetch('/api/leads/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+  loadCampaignOverview();
+}
+async function setLeadRevenue(id, revenue) {
+  await fetch('/api/leads/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revenue: Number(revenue) || 0 }) });
+  loadCampaignOverview();
+}
+async function deleteLead(id) {
+  if (!confirm('Удалить заявку?')) return;
+  await fetch('/api/leads/' + id, { method: 'DELETE' });
+  loadCampaignLeads(); loadCampaignOverview();
+}
+
 // ── Init ──────────────────────────────────────────────────────────────
 document.getElementById('detail-modal').addEventListener('click', (e) => {
   if (e.target.id === 'detail-modal') closeDetail();
@@ -843,10 +990,20 @@ document.getElementById('detail-modal').addEventListener('click', (e) => {
 // Дефолт period = текущий месяц
 document.getElementById('analyze-period').value = new Date().toISOString().slice(0, 7);
 
+// Дефолтный период дашборда кампании: с 1-го числа текущего месяца по сегодня
+(function initCampDates() {
+  const now = new Date();
+  document.getElementById('camp-from').value = now.toISOString().slice(0, 7) + '-01';
+  document.getElementById('camp-to').value = now.toISOString().slice(0, 10);
+})();
+
+loadCampaignOverview();
+loadCampaignLeads();
 loadChannels().then(loadCampaigns);
 loadSalesStats();
 setInterval(loadCampaigns, 30000);
 setInterval(loadSalesStats, 60000);
+setInterval(() => { loadCampaignOverview(); loadCampaignLeads(); }, 45000);
 </script>
 </body>
 </html>

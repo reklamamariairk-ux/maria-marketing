@@ -13,6 +13,7 @@ const daily = require('./routes/daily');
 const analyze = require('./routes/analyze');
 const integrations = require('./routes/integrations');
 const proxyGroq = require('./routes/proxy-groq');
+const campaign = require('./routes/campaign');
 
 const app = express();
 // Лимит 10 МБ — для CSV-импорта продаж за месяц должно с запасом хватить
@@ -59,6 +60,13 @@ app.get('/api/reports', analyze.listReports);
 
 // ── Прокси к Groq (для клиентов с заблокированным IP, например VDS в РФ) ──
 app.post('/api/proxy/groq/v1/chat/completions', proxyGroq.proxyChatCompletions);
+
+// ── Дашборд кампании: приём лидов по UTM + сводка по каналам ──────────────
+app.post('/api/leads/ingest', campaign.ingest);
+app.get('/api/campaign/overview', campaign.overview);
+app.get('/api/campaign/leads', campaign.leadsList);
+app.patch('/api/leads/:id', campaign.patchLead);
+app.delete('/api/leads/:id', campaign.deleteLead);
 
 // ── Интеграции (Авито/блогеры — CSV; Я.Директ — API) ─────────────────────
 app.post('/api/campaigns/:id/daily/import-csv', integrations.importDailyCsv);
