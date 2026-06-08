@@ -12,10 +12,16 @@ if (!connectionString) {
   process.exit(1);
 }
 
+// SSL не нужен для локального Postgres (docker-сеть Hostinger, hostname `postgres`,
+// sslmode=disable) и для localhost. Для облачных БД (Neon и т.п.) — TLS с
+// rejectUnauthorized:false.
+const noSsl = /localhost|127\.0\.0\.1/.test(connectionString)
+  || /[?&]sslmode=disable/.test(connectionString)
+  || /@postgres[:/]/.test(connectionString);
+
 const pool = new Pool({
   connectionString,
-  // Neon требует TLS, кроме локальной разработки через docker
-  ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
+  ssl: noSsl ? false : { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
 });
