@@ -75,6 +75,9 @@ app.post('/api/integrations/yandex-direct/sync', integrations.yandexDirectSync);
 app.get('/api/integrations/yandex-metrika/counters', integrations.metrikaCounters);
 app.get('/api/integrations/yandex-metrika/goals', integrations.metrikaGoals);
 app.post('/api/integrations/yandex-metrika/sync', integrations.metrikaSync);
+app.post('/api/integrations/vk-ads/sync', integrations.vkAdsSync);
+app.get('/api/integrations/telegram/channel', integrations.telegramChannel);
+app.post('/api/integrations/instagram/sync', integrations.instagramSync);
 
 // ── Статика (минимальный UI пока — потом интегрируем во вкладку dashboard'а) ─
 app.use('/', express.static(path.join(__dirname, '..', 'web')));

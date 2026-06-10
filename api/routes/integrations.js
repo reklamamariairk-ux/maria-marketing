@@ -6,6 +6,9 @@ const { pool } = require('../lib/db');
 const { parseCsv, parseAmount, parseDate } = require('../lib/csv');
 const yandexDirect = require('../lib/yandex-direct');
 const yandexMetrika = require('../lib/yandex-metrika');
+const vkAds = require('../lib/vk-ads');
+const telegram = require('../lib/telegram');
+const instagram = require('../lib/instagram');
 
 // Алиасы колонок CSV с расходами по дням
 const DAILY_ALIASES = {
@@ -129,15 +132,15 @@ async function status(_req, res) {
     },
     vk_ads: {
       configured: !!process.env.VK_ADS_TOKEN,
-      hint: 'VK Ads API — токен через my.target.ru или ads.vk.com',
+      hint: 'VK Ads (новый кабинет ads.vk.com) — Bearer-токен из настроек агентства/клиента. Синк: POST /api/integrations/vk-ads/sync',
     },
     telegram: {
       configured: !!process.env.TELEGRAM_BOT_TOKEN,
-      hint: 'Bot Token — для статистики канала (нужен админ-доступ к каналу)',
+      hint: 'Bot Token; бот должен быть админом канала. Снимок подписчиков: GET /api/integrations/telegram/channel?chat=@username. Просмотры/расход через Bot API недоступны',
     },
     instagram: {
-      configured: !!process.env.IG_ACCESS_TOKEN,
-      hint: 'Meta Graph API: business account + long-lived token',
+      configured: !!(process.env.IG_ACCESS_TOKEN && process.env.IG_USER_ID),
+      hint: 'Meta Graph API: бизнес-аккаунт + long-lived token + IG_USER_ID. Дневной охват (reach): POST /api/integrations/instagram/sync. impressions/profile_views задепрекейчены Meta в 2025',
     },
     groq_llm: {
       configured: !!process.env.GROQ_API_KEY,
@@ -271,7 +274,111 @@ async function metrikaSync(req, res) {
   }
 }
 
+// POST /api/integrations/vk-ads/sync?campaign_id=&from=&to=&vk_campaign_ids=
+// Тянет дневную статистику VK Ads (расход/показы/клики/цели) в mk_campaign_daily.
+async function vkAdsSync(req, res) {
+  try {
+    const campaignId = parseInt(req.query.campaign_id, 10);
+    const from = req.query.from;
+    const to = req.query.to;
+    if (isNaN(campaignId)) { res.status(400).json({ error: 'campaign_id обязателен' }); return; }
+    if (!from || !to) { res.status(400).json({ error: 'from и to обязательны (YYYY-MM-DD)' }); return; }
+    if (!process.env.VK_ADS_TOKEN) {
+      res.status(400).json({ error: 'VK_ADS_TOKEN не задан в env' }); return;
+    }
+
+    const vkIds = req.query.vk_campaign_ids;
+    const stats = await vkAds.fetchDailyStats({
+      token: process.env.VK_ADS_TOKEN,
+      from, to,
+      campaignIds: vkIds ? vkIds.split(',').map(s => s.trim()).filter(Boolean) : null,
+    });
+
+    let inserted = 0;
+    for (const day of stats) {
+      await pool.query(
+        `INSERT INTO mk_campaign_daily (campaign_id, date, cost, impressions, clicks, conversions, source)
+         VALUES ($1, $2::date, $3::numeric, $4, $5, $6, 'vk-ads-api')
+         ON CONFLICT (campaign_id, date) DO UPDATE SET
+           cost = EXCLUDED.cost,
+           impressions = EXCLUDED.impressions,
+           clicks = EXCLUDED.clicks,
+           conversions = EXCLUDED.conversions,
+           source = 'vk-ads-api',
+           imported_at = NOW()`,
+        [campaignId, day.date, day.cost, day.impressions, day.clicks, day.conversions]
+      );
+      inserted++;
+    }
+
+    res.json({ ok: true, days_synced: inserted, period: { from, to }, sample: stats.slice(0, 3) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// GET /api/integrations/telegram/channel?chat=@username
+// Live-снимок канала: подписчики + инфо. В mk_campaign_daily НЕ пишет
+// (Bot API не даёт ни расхода, ни просмотров — только текущее число подписчиков).
+async function telegramChannel(req, res) {
+  try {
+    if (!process.env.TELEGRAM_BOT_TOKEN) {
+      res.status(400).json({ error: 'TELEGRAM_BOT_TOKEN не задан в env' }); return;
+    }
+    const chat = req.query.chat || process.env.TELEGRAM_CHANNEL;
+    if (!chat) { res.status(400).json({ error: 'chat обязателен (@username или chat_id), либо задай env TELEGRAM_CHANNEL' }); return; }
+
+    const stats = await telegram.fetchChannelStats({ token: process.env.TELEGRAM_BOT_TOKEN, chat });
+    res.json({ ok: true, ...stats });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// POST /api/integrations/instagram/sync?campaign_id=&from=&to=&ig_user_id=&metric=reach
+// Тянет дневной охват (reach) аккаунта в mk_campaign_daily (cost=0, как органика).
+async function instagramSync(req, res) {
+  try {
+    const campaignId = parseInt(req.query.campaign_id, 10);
+    const from = req.query.from;
+    const to = req.query.to;
+    if (isNaN(campaignId)) { res.status(400).json({ error: 'campaign_id обязателен' }); return; }
+    if (!from || !to) { res.status(400).json({ error: 'from и to обязательны (YYYY-MM-DD)' }); return; }
+    if (!process.env.IG_ACCESS_TOKEN) {
+      res.status(400).json({ error: 'IG_ACCESS_TOKEN не задан в env' }); return;
+    }
+    const igUserId = req.query.ig_user_id || process.env.IG_USER_ID;
+    if (!igUserId) { res.status(400).json({ error: 'ig_user_id обязателен (или env IG_USER_ID)' }); return; }
+
+    const stats = await instagram.fetchDailyStats({
+      token: process.env.IG_ACCESS_TOKEN,
+      igUserId,
+      from, to,
+      metric: req.query.metric || 'reach',
+    });
+
+    let updated = 0;
+    for (const day of stats) {
+      // Органика: расхода нет. INSERT cost=0, ON CONFLICT обновляет только охват.
+      await pool.query(
+        `INSERT INTO mk_campaign_daily (campaign_id, date, cost, impressions, source)
+         VALUES ($1, $2::date, 0, $3, 'instagram-graph-api')
+         ON CONFLICT (campaign_id, date) DO UPDATE SET
+           impressions = EXCLUDED.impressions,
+           imported_at = NOW()`,
+        [campaignId, day.date, day.impressions]
+      );
+      updated++;
+    }
+
+    res.json({ ok: true, days_synced: updated, period: { from, to }, sample: stats.slice(0, 3) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   importDailyCsv, status, yandexDirectSync,
   metrikaCounters, metrikaGoals, metrikaSync,
+  vkAdsSync, telegramChannel, instagramSync,
 };
