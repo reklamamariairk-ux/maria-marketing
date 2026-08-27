@@ -12,6 +12,8 @@
 //   quantity      / количество — опц.
 
 const { pool } = require('../lib/db');
+const { Pool } = require('pg');
+const planPool = process.env.SALES_PLAN_DATABASE_URL ? new Pool({ connectionString: process.env.SALES_PLAN_DATABASE_URL, max: 2 }) : null;
 const { parseCsv, normalizePhone, parseAmount, parseDate } = require('../lib/csv');
 
 // Маппинг заголовков колонок (case-insensitive)
@@ -258,7 +260,21 @@ async function purchaseCandidates(req, res) {
               + (CASE WHEN SUM(amount) > 0 THEN GREATEST(0, LEAST(1, SUM(gross_profit) / SUM(amount))) ELSE 0 END) * 0.25
               + (CASE WHEN MIN(stock_qty) IS NULL THEN 0.5 WHEN MIN(stock_qty) > 0 THEN 1 ELSE 0 END) * 0.20
               + LEAST(1, SUM(quantity) / 100.0) * 0.15 + 0.10) DESC LIMIT 20`);
-    res.json({ candidates: rows.map(r => ({ ...r, soldQty: Number(r.sold_qty), salesAmount: Number(r.sales_amount), grossProfit: Number(r.gross_profit), targetAmount: r.target_amount == null ? null : Number(r.target_amount), stockQty: r.stock_qty == null ? null : Number(r.stock_qty) })) });
+    let plans = [];
+    if (planPool) {
+      const period = String(req.query.period || new Date().toISOString().slice(0, 7)).match(/^\d{4}-\d{2}$/)?.[0];
+      if (period) {
+        const p = await planPool.query(`SELECT p.product_id AS "productCode", COALESCE(pr.name,p.product_id) AS "productName", SUM(p.amount)::numeric AS "targetAmount" FROM plans p LEFT JOIN products pr ON pr.id=p.product_id WHERE p.period=$1 GROUP BY p.product_id,pr.name`, [period]);
+        plans = p.rows;
+      }
+    }
+    const merged = new Map(rows.map(r => [String(r.productCode), { ...r, targetAmount: r.target_amount == null ? null : Number(r.target_amount) }]));
+    for (const p of plans) {
+      const item = merged.get(String(p.productCode));
+      if (item) item.targetAmount = Number(p.targetAmount) || item.targetAmount;
+      else merged.set(String(p.productCode), { productCode: p.productCode, productName: p.productName, soldQty: 0, salesAmount: 0, grossProfit: 0, targetAmount: Number(p.targetAmount) || 0, stockQty: null });
+    }
+    res.json({ candidates: Array.from(merged.values()).map(r => ({ ...r, soldQty: Number(r.soldQty ?? r.sold_qty ?? 0), salesAmount: Number(r.salesAmount ?? r.sales_amount ?? 0), grossProfit: Number(r.grossProfit ?? r.gross_profit ?? 0), targetAmount: r.targetAmount == null ? null : Number(r.targetAmount), stockQty: r.stockQty == null ? null : Number(r.stockQty) })) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 }
 
