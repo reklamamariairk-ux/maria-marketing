@@ -24,6 +24,8 @@ const COL_ALIASES = {
   product_id:  ['product_id', 'product', 'товар', 'код товара', 'sku'],
   cost:        ['cost', 'себестоимость', 'cost_price'],
   quantity:    ['quantity', 'qty', 'количество', 'кол-во'],
+  target_amount: ['target_amount', 'план', 'план продаж', 'цель'],
+  stock_qty:   ['stock_qty', 'остаток', 'остатки', 'остаток шт'],
 };
 
 function findColumnIndex(header, aliases) {
@@ -96,6 +98,8 @@ async function importCsv(req, res) {
       const productId = colMap.product_id >= 0 ? (cells[colMap.product_id]?.trim() || null) : null;
       const cost = colMap.cost >= 0 ? parseAmount(cells[colMap.cost]) : 0;
       const quantity = colMap.quantity >= 0 ? parseAmount(cells[colMap.quantity]) : 1;
+      const targetAmount = colMap.target_amount >= 0 ? parseAmount(cells[colMap.target_amount]) : null;
+      const stockQty = colMap.stock_qty >= 0 ? parseAmount(cells[colMap.stock_qty]) : null;
 
       // period = YYYY-MM из даты
       const period = soldAt.slice(0, 7);
@@ -105,6 +109,8 @@ async function importCsv(req, res) {
         amount, cost,
         gross_profit: amount - cost,
         quantity,
+        target_amount: targetAmount,
+        stock_qty: stockQty,
         promo_code: promo,
         customer_phone_normalized: phone,
         sold_at: soldAt,
@@ -119,10 +125,10 @@ async function importCsv(req, res) {
         await client.query('BEGIN');
         for (const row of valid) {
           await client.query(
-            `INSERT INTO sales (period, store_id, product_id, amount, cost, gross_profit, quantity, promo_code, customer_phone_normalized, sold_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            `INSERT INTO sales (period, store_id, product_id, amount, cost, gross_profit, quantity, target_amount, stock_qty, promo_code, customer_phone_normalized, sold_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
             [row.period, row.store_id, row.product_id, row.amount, row.cost,
-             row.gross_profit, row.quantity, row.promo_code, row.customer_phone_normalized, row.sold_at]
+             row.gross_profit, row.quantity, row.target_amount, row.stock_qty, row.promo_code, row.customer_phone_normalized, row.sold_at]
           );
           inserted++;
 
@@ -227,12 +233,12 @@ async function purchaseFeed(req, res) {
   try {
     const { rows } = await pool.query(
       `SELECT id, sold_at, store_id, product_id, quantity, amount,
-              customer_phone_normalized
+              customer_phone_normalized, cost, gross_profit, target_amount, stock_qty
          FROM sales WHERE period=$1 ORDER BY sold_at ASC LIMIT $2`, [period, limit]);
     res.json({ period, rowsCount: rows.length, rows: rows.map(r => ({
       date: r.sold_at, storeCode: r.store_id, chequeNo: String(r.id), operation: 'sale',
       phone: r.customer_phone_normalized, productCode: r.product_id,
-      qty: Number(r.quantity), sum: Number(r.amount)
+      qty: Number(r.quantity), sum: Number(r.amount), cost: Number(r.cost), grossProfit: Number(r.gross_profit), targetAmount: r.target_amount == null ? null : Number(r.target_amount), stockQty: r.stock_qty == null ? null : Number(r.stock_qty)
     })) });
   } catch (err) { res.status(500).json({ error: err.message }); }
 }

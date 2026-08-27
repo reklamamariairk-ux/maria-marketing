@@ -29,12 +29,16 @@ BEGIN
       cost            NUMERIC(14,2) NOT NULL DEFAULT 0, -- себестоимость
       gross_profit    NUMERIC(14,2) NOT NULL DEFAULT 0,
       quantity        NUMERIC(14,2) NOT NULL DEFAULT 0,
+      target_amount   NUMERIC(14,2),
+      stock_qty       NUMERIC(14,2),
       promo_code      VARCHAR(50),
       customer_phone_normalized VARCHAR(20),
       sold_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   END IF;
 END $$;
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS target_amount NUMERIC(14,2);
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS stock_qty NUMERIC(14,2);
 
 CREATE INDEX IF NOT EXISTS idx_sales_promo_code
   ON sales(promo_code) WHERE promo_code IS NOT NULL;
