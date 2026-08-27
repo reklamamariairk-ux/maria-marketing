@@ -243,4 +243,23 @@ async function purchaseFeed(req, res) {
   } catch (err) { res.status(500).json({ error: err.message }); }
 }
 
-module.exports = { importCsv, recent, stats, purchaseFeed };
+// Кандидаты для автоматических коммерческих заданий.
+async function purchaseCandidates(req, res) {
+  const expected = process.env.INGEST_TOKEN || '';
+  if (!expected || req.get('X-Ingest-Token') !== expected) { res.status(403).json({ error: 'forbidden' }); return; }
+  try {
+    const { rows } = await pool.query(`
+      SELECT product_id AS "productCode", SUM(quantity)::numeric AS sold_qty,
+             SUM(amount)::numeric AS sales_amount, SUM(gross_profit)::numeric AS gross_profit,
+             MAX(target_amount)::numeric AS target_amount, MIN(stock_qty)::numeric AS stock_qty
+        FROM sales WHERE sold_at >= NOW() - INTERVAL '28 days' AND product_id IS NOT NULL
+       GROUP BY product_id HAVING SUM(quantity) > 0
+       ORDER BY ((CASE WHEN MAX(target_amount) > 0 THEN GREATEST(0, 1 - SUM(amount) / MAX(target_amount)) ELSE 0.25 END) * 0.30
+              + (CASE WHEN SUM(amount) > 0 THEN GREATEST(0, LEAST(1, SUM(gross_profit) / SUM(amount))) ELSE 0 END) * 0.25
+              + (CASE WHEN MIN(stock_qty) IS NULL THEN 0.5 WHEN MIN(stock_qty) > 0 THEN 1 ELSE 0 END) * 0.20
+              + LEAST(1, SUM(quantity) / 100.0) * 0.15 + 0.10) DESC LIMIT 20`);
+    res.json({ candidates: rows.map(r => ({ ...r, soldQty: Number(r.sold_qty), salesAmount: Number(r.sales_amount), grossProfit: Number(r.gross_profit), targetAmount: r.target_amount == null ? null : Number(r.target_amount), stockQty: r.stock_qty == null ? null : Number(r.stock_qty) })) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}
+
+module.exports = { importCsv, recent, stats, purchaseFeed, purchaseCandidates };
