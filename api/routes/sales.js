@@ -213,4 +213,28 @@ async function stats(_req, res) {
   }
 }
 
-module.exports = { importCsv, recent, stats };
+// GET /api/sales/purchase-feed?period=YYYY-MM&limit=...
+// Server-to-server feed for Kotik Kombat. The token is intentionally separate
+// from the public analytics endpoints; phone values are returned only to the
+// internal maria-bot container on the Docker network.
+async function purchaseFeed(req, res) {
+  const expected = process.env.INGEST_TOKEN || '';
+  const got = req.get('X-Ingest-Token') || '';
+  if (!expected || got !== expected) { res.status(403).json({ error: 'forbidden' }); return; }
+  const period = String(req.query.period || '').match(/^\d{4}-\d{2}$/)?.[0];
+  if (!period) { res.status(400).json({ error: 'period=YYYY-MM required' }); return; }
+  const limit = Math.min(Math.max(Number(req.query.limit) || 100000, 1), 200000);
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, sold_at, store_id, product_id, quantity, amount,
+              customer_phone_normalized
+         FROM sales WHERE period=$1 ORDER BY sold_at ASC LIMIT $2`, [period, limit]);
+    res.json({ period, rowsCount: rows.length, rows: rows.map(r => ({
+      date: r.sold_at, storeCode: r.store_id, chequeNo: String(r.id), operation: 'sale',
+      phone: r.customer_phone_normalized, productCode: r.product_id,
+      qty: Number(r.quantity), sum: Number(r.amount)
+    })) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+}
+
+module.exports = { importCsv, recent, stats, purchaseFeed };

@@ -48,6 +48,7 @@ app.get('/api/campaigns/:id/metrics', campaigns.metrics);
 app.post('/api/sales/import-csv', sales.importCsv);
 app.get('/api/sales/recent', sales.recent);
 app.get('/api/sales/stats', sales.stats);
+app.get('/api/sales/purchase-feed', sales.purchaseFeed);
 
 // ── Дневные расходы по кампании ──────────────────────────────────────────
 app.get('/api/campaigns/:id/daily', daily.list);
