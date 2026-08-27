@@ -266,6 +266,10 @@ async function purchaseCandidates(req, res) {
       if (period) {
         const p = await planPool.query(`SELECT p.product_id AS "productCode", COALESCE(pr.name,p.product_id) AS "productName", SUM(p.amount)::numeric AS "targetAmount" FROM plans p LEFT JOIN products pr ON pr.id=p.product_id WHERE p.period=$1 GROUP BY p.product_id,pr.name`, [period]);
         plans = p.rows;
+        if (!plans.length) {
+          const fallback = await planPool.query(`SELECT p.product_id AS "productCode", COALESCE(pr.name,p.product_id) AS "productName", SUM(p.amount)::numeric AS "targetAmount" FROM plans p LEFT JOIN products pr ON pr.id=p.product_id WHERE p.period=(SELECT MAX(period) FROM plans) GROUP BY p.product_id,pr.name`);
+          plans = fallback.rows;
+        }
       }
     }
     const merged = new Map(rows.map(r => [String(r.productCode), { ...r, targetAmount: r.target_amount == null ? null : Number(r.target_amount) }]));
