@@ -273,7 +273,7 @@ async function purchaseCandidates(req, res) {
       }
     }
     const merged = new Map(rows.map(r => [String(r.productCode), { ...r, targetAmount: r.target_amount == null ? null : Number(r.target_amount) }]));
-    for (const p of plans) {
+    for (const p of plans.filter(x => !String(x.productCode).startsWith('_'))) {
       const item = merged.get(String(p.productCode));
       if (item) item.targetAmount = Number(p.targetAmount) || item.targetAmount;
       else merged.set(String(p.productCode), { productCode: p.productCode, productName: p.productName, soldQty: 0, salesAmount: 0, grossProfit: 0, targetAmount: Number(p.targetAmount) || 0, stockQty: null });
