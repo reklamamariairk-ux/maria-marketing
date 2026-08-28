@@ -270,6 +270,12 @@ async function purchaseCandidates(req, res) {
           const fallback = await planPool.query(`SELECT p.product_id AS "productCode", COALESCE(pr.name,p.product_id) AS "productName", SUM(p.amount)::numeric AS "targetAmount" FROM plans p LEFT JOIN products pr ON pr.id=p.product_id WHERE p.period=(SELECT MAX(period) FROM plans) GROUP BY p.product_id,pr.name`);
           plans = fallback.rows;
         }
+        // В старых пакетах дашборда план был только строкой _total.
+        // В этом случае строим безопасный ориентир из последнего периода продаж.
+        if (!plans.filter(x => !String(x.productCode).startsWith('_')).length) {
+          const historical = await planPool.query(`SELECT s.product_id AS "productCode", COALESCE(pr.name,s.product_id) AS "productName", (SUM(s.amount) * 1.10)::numeric AS "targetAmount" FROM sales s LEFT JOIN products pr ON pr.id=s.product_id WHERE s.product_id IS NOT NULL AND s.period=(SELECT MAX(period) FROM sales) GROUP BY s.product_id,pr.name ORDER BY SUM(s.amount) DESC LIMIT 100`);
+          plans = historical.rows;
+        }
       }
     }
     const merged = new Map(rows.map(r => [String(r.productCode), { ...r, targetAmount: r.target_amount == null ? null : Number(r.target_amount) }]));
